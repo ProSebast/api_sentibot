@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba API Predictiva</title>
+</head>
+<body>
+    <h2>Prueba de API Predictiva (Railway)</h2>
+
+    <video id="videoCamara" width="320" height="240" autoplay></video><br>
+    <button id="fotoBtn">Tomar Foto</button>
+
+    <h3>Emoción Detectada:</h3>
+    <p id="emocion">Esperando...</p>
+    <p id="confianza">---</p>
+
+    <canvas id="canvas" width="48" height="48" style="display:none;"></canvas>
+
+    <script>
+        const API_URL = "/predict_emotion"; // Llama a tu endpoint en la misma app
+        const video = document.getElementById('videoCamara');
+        const canvas = document.getElementById('canvas');
+        const fotoBtn = document.getElementById('fotoBtn');
+        const emocionEl = document.getElementById('emocion');
+        const confianzaEl = document.getElementById('confianza');
+
+        // Activar cámara
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error("Error al activar cámara:", err));
+
+        fotoBtn.addEventListener('click', async () => {
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageBase64 = canvas.toDataURL('image/png');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+
+                if (!response.ok) throw new Error("Error en la API");
+
+                const data = await response.json();
+                emocionEl.textContent = "Emoción: " + data.label;
+                confianzaEl.textContent = "Confianza: " + (data.confidence * 100).toFixed(2) + "%";
+            } catch (err) {
+                console.error("Error al llamar API:", err);
+                emocionEl.textContent = "Error al detectar emoción";
+                confianzaEl.textContent = "---";
+            }
+        });
+    </script>
+</body>
+</html>
