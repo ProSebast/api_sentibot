@@ -2,37 +2,71 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Prueba API Predictiva</title>
+    <title>Prueba de API Sentibot</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #f5f5f5; }
+        video { border-radius: 10px; margin-top: 20px; }
+        h2 { color: #333; }
+        .status { margin-top: 10px; font-size: 1.1em; }
+        .ok { color: green; }
+        .error { color: red; }
+    </style>
 </head>
 <body>
-    <h2>Prueba de API Predictiva (Railway)</h2>
-
+    <h2>Prueba en tiempo real del modelo Sentibot</h2>
     <video id="videoCamara" width="320" height="240" autoplay></video><br>
-    <button id="fotoBtn">Tomar Foto</button>
+    <button id="startBtn">Iniciar detección</button>
+    <button id="stopBtn" disabled>Detener</button>
 
     <h3>Emoción Detectada:</h3>
-    <p id="emocion">Esperando...</p>
-    <p id="confianza">---</p>
+    <p id="emocion" class="status">Esperando...</p>
+    <p id="confianza" class="status">---</p>
 
     <canvas id="canvas" width="48" height="48" style="display:none;"></canvas>
 
     <script>
-        const API_URL = "/predict_emotion"; // Llama a tu endpoint en la misma app
+        const API_URL = "/predict_emotion"; // tu endpoint en la misma app
         const video = document.getElementById('videoCamara');
         const canvas = document.getElementById('canvas');
-        const fotoBtn = document.getElementById('fotoBtn');
         const emocionEl = document.getElementById('emocion');
         const confianzaEl = document.getElementById('confianza');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
 
-        // Activar cámara
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(stream => video.srcObject = stream)
-            .catch(err => console.error("Error al activar cámara:", err));
+        let stream = null;
+        let intervalo = null;
 
-        fotoBtn.addEventListener('click', async () => {
+        async function activarCamara() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                // Inicia detección cada 2 segundos
+                intervalo = setInterval(capturarYEnviar, 2000);
+            } catch (err) {
+                console.error("Error al activar cámara:", err);
+                emocionEl.textContent = "Error al activar cámara";
+                emocionEl.className = "status error";
+            }
+        }
+
+        function detenerCamara() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            clearInterval(intervalo);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            emocionEl.textContent = "Cámara detenida";
+            confianzaEl.textContent = "---";
+        }
+
+        async function capturarYEnviar() {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
             const imageBase64 = canvas.toDataURL('image/png');
 
             try {
@@ -47,12 +81,17 @@
                 const data = await response.json();
                 emocionEl.textContent = "Emoción: " + data.label;
                 confianzaEl.textContent = "Confianza: " + (data.confidence * 100).toFixed(2) + "%";
+                emocionEl.className = "status ok";
             } catch (err) {
                 console.error("Error al llamar API:", err);
                 emocionEl.textContent = "Error al detectar emoción";
+                emocionEl.className = "status error";
                 confianzaEl.textContent = "---";
             }
-        });
+        }
+
+        startBtn.addEventListener('click', activarCamara);
+        stopBtn.addEventListener('click', detenerCamara);
     </script>
 </body>
 </html>
