@@ -6,7 +6,7 @@ from PIL import Image
 
 # Carga del modelo solo una vez
 model = load_model("model/sentibotv2.h5")
-EMOTIONS = ["Enojado", "Triste", "Neutral", "Feliz", "Sorprendido"]
+EMOTIONS = ["Feliz", "Triste", "Neutral", "Enojado", "Sorprendido"]
 
 def predict_emotion(image: Image.Image):
     image = image.resize((48,48))
